@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "attendance": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$recordId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "users": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
