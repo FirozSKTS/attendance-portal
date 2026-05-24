@@ -1,0 +1,48 @@
+name: Monthly Attendance Reminder
+
+on:
+  schedule:
+    # Runs at 9 AM on the second-to-last day of every month
+    - cron: '0 9 28-31 * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if tomorrow is last working day
+        id: check_date
+        run: |
+          TOMORROW=$(date -d "+1 day" +%Y-%m-%d)
+          LAST_DAY=$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%Y-%m-%d)
+          if [ "$TOMORROW" == "$LAST_DAY" ]; then
+            echo "is_last_day=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_last_day=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Email Reminder
+        if: steps.check_date.outputs.is_last_day == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: 'Reminder: Submit Your Monthly Attendance'
+          to: ${{ secrets.EMPLOYEE_EMAILS }}
+          from: Smart Krow HR System
+          body: |
+            Dear Team,
+
+            This is a friendly reminder to submit your attendance for this month.
+            
+            Please access the attendance portal and update your records:
+            https://YOUR_GITHUB_USERNAME.github.io/attendance-portal/
+
+            Deadline: End of day tomorrow (last working day of the month)
+
+            If you have any questions, please contact your administrator.
+
+            Best regards,
+            Smart Krow Technology Solutions
