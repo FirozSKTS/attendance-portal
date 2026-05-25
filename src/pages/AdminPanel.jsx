@@ -10,6 +10,19 @@ function AdminPanel() {
   const [attendanceRecords, setAttendanceRecords] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState('all')
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'MMMM yyyy'))
+  
+  // Search state
+  const [appliedFilters, setAppliedFilters] = useState({
+    employee: 'all',
+    month: format(new Date(), 'MMMM yyyy')
+  })
+  const [hasSearched, setHasSearched] = useState(false)
+
+  const handleSearch = () => {
+    setAppliedFilters({ employee: selectedEmployee, month: selectedMonth })
+    setHasSearched(true)
+  }
+
   const [stats, setStats] = useState({
     totalEmployees: 0,
     totalRecords: 0,
@@ -36,14 +49,42 @@ function AdminPanel() {
     if (allAttendance.length > 0) {
       let filtered = [...allAttendance]
       
-      // Apply employee filter
-      if (selectedEmployee !== 'all') {
-        filtered = filtered.filter(record => record.employeeId === selectedEmployee)
+      // Apply employee filter (robust matching)
+      if (appliedFilters.employee !== 'all') {
+        const selectedEmp = employees.find(e => e.id === appliedFilters.employee)
+        
+        if (selectedEmp) {
+          filtered = filtered.filter(record => {
+            if (!record) return false;
+            
+            // 1. Exact Email Match
+            if (record.employeeEmail && selectedEmp.email && 
+                record.employeeEmail.toLowerCase() === selectedEmp.email.toLowerCase()) return true;
+                
+            // 2. ID Matches
+            if (record.employeeId === selectedEmp.id) return true;
+            if (record.employeeId === selectedEmp.employeeId) return true;
+            
+            // 3. Fuzzy Email Username Match (handles typos like chanduk@ vs chandu@)
+            const recEmailUser = record.employeeEmail?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const empEmailUser = selectedEmp.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (recEmailUser && empEmailUser && 
+                (recEmailUser.includes(empEmailUser) || empEmailUser.includes(recEmailUser))) return true;
+                
+            // 4. Fuzzy Name Match
+            const recName = record.employeeName?.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const empName = selectedEmp.name?.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (recName && empName && 
+                (recName.includes(empName) || empName.includes(recName))) return true;
+                
+            return false;
+          })
+        }
       }
       
       // Apply month filter
-      if (selectedMonth !== 'all') {
-        filtered = filtered.filter(record => record.month === selectedMonth)
+      if (appliedFilters.month !== 'all') {
+        filtered = filtered.filter(record => record.month === appliedFilters.month)
       }
       
       // Calculate stats
@@ -61,7 +102,7 @@ function AdminPanel() {
         absentCount: absent
       })
     }
-  }, [allAttendance, employees, selectedEmployee, selectedMonth])
+  }, [allAttendance, employees, appliedFilters])
 
   const exportToCSV = () => {
     const headers = ['Employee Name', 'Employee ID', 'Date', 'Month', 'Status', 'Remarks', 'Submitted At']
@@ -335,11 +376,11 @@ function AdminPanel() {
             </div>
 
             <button 
-              onClick={refreshData}
-              className="btn btn-secondary"
+              onClick={handleSearch}
+              className="btn btn-primary"
               disabled={globalLoading}
             >
-              {globalLoading ? 'Refreshing...' : '🔄 Refresh Data'}
+              Search
             </button>
 
             <button onClick={exportToCSV} className="btn btn-primary">
@@ -349,6 +390,10 @@ function AdminPanel() {
 
           {globalLoading ? (
             <div className="loading">Loading attendance records...</div>
+          ) : !hasSearched ? (
+            <div className="empty-state">
+              <p>Select filters and click Search to view attendance history.</p>
+            </div>
           ) : attendanceRecords.length === 0 ? (
             <div className="empty-state">
               <p>No attendance records found</p>

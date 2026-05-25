@@ -200,3 +200,38 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(43, 190, 203, 0.3);
 }
+
+
+/* MOBILE RESPONSIVENESS */
+@media (max-width: 768px) {
+  .header-container {
+    padding: 10px 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .logo-image {
+    height: 35px;
+  }
+  .nav-menu {
+    gap: 15px;
+    width: 100%;
+    justify-content: center;
+    order: 3;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+  }
+  .nav-link {
+    font-size: 14px;
+  }
+  .user-info {
+    padding-left: 0;
+    border-left: none;
+  }
+  .user-name {
+    display: none;
+  }
+  .user-dropdown {
+    margin-left: auto;
+  }
+}
+

@@ -12,6 +12,19 @@ function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState('all')
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString())
   const [selectedStatus, setSelectedStatus] = useState('all')
+
+  // Search state
+  const [appliedFilters, setAppliedFilters] = useState({
+    month: 'all',
+    year: new Date().getFullYear().toString(),
+    status: 'all'
+  })
+  const [hasSearched, setHasSearched] = useState(false)
+  
+  const handleSearch = () => {
+    setAppliedFilters({ month: selectedMonth, year: selectedYear, status: selectedStatus })
+    setHasSearched(true)
+  }
   
   // Calculate leave balances
   const leaveBalances = useMemo(() => {
@@ -58,7 +71,7 @@ function Dashboard() {
     }
   }, [userAttendance])
   
-  // Filter attendance records
+  // Filter attendance records based on applied filters
   const filteredAttendance = useMemo(() => {
     return userAttendance.filter(record => {
       const recordDate = new Date(record.date)
@@ -66,23 +79,23 @@ function Dashboard() {
       const recordYear = getYear(recordDate)
       
       // Month filter
-      if (selectedMonth !== 'all' && recordMonth !== parseInt(selectedMonth)) {
+      if (appliedFilters.month !== 'all' && recordMonth !== parseInt(appliedFilters.month)) {
         return false
       }
       
       // Year filter
-      if (selectedYear !== 'all' && recordYear !== parseInt(selectedYear)) {
+      if (appliedFilters.year !== 'all' && recordYear !== parseInt(appliedFilters.year)) {
         return false
       }
       
       // Status filter
-      if (selectedStatus !== 'all' && record.status !== selectedStatus) {
+      if (appliedFilters.status !== 'all' && record.status !== appliedFilters.status) {
         return false
       }
       
       return true
     })
-  }, [userAttendance, selectedMonth, selectedYear, selectedStatus])
+  }, [userAttendance, appliedFilters])
   
   // Calculate stats from filtered data
   const stats = useMemo(() => {
@@ -360,8 +373,6 @@ function Dashboard() {
                   onChange={(e) => setSelectedStatus(e.target.value)}
                 >
                   <option value="all">All Status</option>
-                  <option value="Present">Present</option>
-                  <option value="Absent">Absent</option>
                   <option value="Half Day">Half Day</option>
                   <option value="Casual Leave">Casual Leave</option>
                   <option value="Sick Leave">Sick Leave</option>
@@ -369,16 +380,20 @@ function Dashboard() {
               </div>
 
               <button 
-                onClick={refreshData}
-                className="btn btn-secondary"
+                onClick={handleSearch}
+                className="btn btn-primary"
                 disabled={globalLoading}
               >
-                {globalLoading ? 'Refreshing...' : '🔄 Refresh'}
+                Search
               </button>
             </div>
           </div>
           
-          {filteredAttendance.length === 0 ? (
+          {!hasSearched ? (
+            <div className="empty-state">
+              <p>Select filters and click Search to view attendance history.</p>
+            </div>
+          ) : filteredAttendance.length === 0 ? (
             <div className="empty-state">
               <p>No attendance records found for the selected filters</p>
             </div>
