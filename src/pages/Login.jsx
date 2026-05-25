@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { db } from '../firebase/config'
@@ -11,11 +11,21 @@ function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { loginWithCredentials } = useAuth()
+  const { user, loginWithCredentials } = useAuth()
   const navigate = useNavigate()
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard')
+    }
+  }, [user, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Prevent double submission
+    if (loading) return
     
     try {
       setError('')
@@ -77,13 +87,12 @@ function Login() {
         await loginWithCredentials(userData.email || userData.username, password, userId, userData)
       }
 
-      console.log('Login successful, navigating to dashboard...')
-      navigate('/dashboard')
+      console.log('Login successful, auth state will trigger redirect...')
+      // Don't navigate here - let useEffect handle it when user state updates
     } catch (err) {
       console.error('Login error:', err)
       console.error('Error details:', err.message, err.code)
       setError('Failed to login. Please check your username/email and password.')
-    } finally {
       setLoading(false)
     }
   }
@@ -97,7 +106,6 @@ function Login() {
           </div>
           
           <h1 className="portal-title">Attendance Management Portal</h1>
-          <h2 className="login-title">Login</h2>
 
           {error && (
             <div className="error-message">

@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
           if (usersSnapshot.exists()) {
             const users = usersSnapshot.val()
             const userEntry = Object.entries(users).find(
-              ([_, userData]) => userData.email === firebaseUser.email
+              ([_, userData]) => userData.email?.toLowerCase() === firebaseUser.email.toLowerCase()
             )
             
             if (userEntry) {
@@ -42,23 +42,25 @@ export function AuthProvider({ children }) {
                 isAdmin: userData.isAdmin || false
               })
             } else {
-              // Fallback for Firebase Auth users
+              // Fallback for Firebase Auth users NOT in database
+              console.warn('User exists in Firebase Auth but not in Realtime Database:', firebaseUser.email)
               setUser({
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
                 employeeId: firebaseUser.email.split('@')[0].toUpperCase(),
-                isAdmin: true
+                isAdmin: false // Default to non-admin for safety
               })
             }
           } else {
             // No users in database, use Firebase Auth data
+            console.warn('No users collection in Realtime Database')
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
               employeeId: firebaseUser.email.split('@')[0].toUpperCase(),
-              isAdmin: true
+              isAdmin: false // Default to non-admin for safety
             })
           }
         } catch (error) {
@@ -69,7 +71,7 @@ export function AuthProvider({ children }) {
             email: firebaseUser.email,
             name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
             employeeId: firebaseUser.email.split('@')[0].toUpperCase(),
-            isAdmin: true
+            isAdmin: false // Default to non-admin for safety
           })
         }
       } else {
