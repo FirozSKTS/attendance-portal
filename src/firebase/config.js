@@ -2,16 +2,17 @@ import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getDatabase } from 'firebase/database'
 
-// Firebase configuration from environment variables
+// Firebase configuration
+// Note: These values are safe to be public (they're client-side config)
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-  databaseURL: `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}-default-rtdb.asia-southeast1.firebasedatabase.app`
+  apiKey: "AIzaSyAHjMwP0_C1ROUCEOzFqyNCEBMQITvGIqc",
+  authDomain: "skts-attendance-portal.firebaseapp.com",
+  projectId: "skts-attendance-portal",
+  storageBucket: "skts-attendance-portal.firebasestorage.app",
+  messagingSenderId: "764249344216",
+  appId: "1:764249344216:web:a45db3f845f4d6e5ebafad",
+  measurementId: "G-NGH731RC55",
+  databaseURL: "https://skts-attendance-portal-default-rtdb.asia-southeast1.firebasedatabase.app"
 }
 
 const app = initializeApp(firebaseConfig)
