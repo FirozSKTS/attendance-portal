@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useData } from '../context/DataContext'
 import { format } from 'date-fns'
+import { db } from '../firebase/config'
+import { ref, push, set, get } from 'firebase/database'
 import './AdminPanel.css'
 
 function AdminPanel() {
@@ -14,6 +16,20 @@ function AdminPanel() {
     presentCount: 0,
     absentCount: 0
   })
+  
+  // Add Employee Modal State
+  const [showAddEmployee, setShowAddEmployee] = useState(false)
+  const [newEmployee, setNewEmployee] = useState({
+    name: '',
+    username: '',
+    employeeId: '',
+    email: '',
+    password: '',
+    isAdmin: false
+  })
+  const [addingEmployee, setAddingEmployee] = useState(false)
+  const [addError, setAddError] = useState('')
+  const [addSuccess, setAddSuccess] = useState('')
 
   // Filter data based on selected filters
   useEffect(() => {
@@ -85,6 +101,102 @@ function AdminPanel() {
   // Get unique months from all attendance data
   const uniqueMonths = [...new Set(allAttendance.map(r => r.month))]
 
+  // Handle Add Employee
+  const handleAddEmployee = async (e) => {
+    e.preventDefault()
+    setAddError('')
+    setAddSuccess('')
+    setAddingEmployee(true)
+
+    try {
+      console.log('Starting to add employee:', newEmployee.username)
+      
+      // Validate username uniqueness
+      const usersRef = ref(db, 'users')
+      const usersSnapshot = await get(usersRef)
+      
+      console.log('Users snapshot exists:', usersSnapshot.exists())
+      
+      if (usersSnapshot.exists()) {
+        const users = usersSnapshot.val()
+        console.log('Existing users:', Object.keys(users).length)
+        
+        const usernameExists = Object.values(users).some(
+          user => user.username?.toLowerCase() === newEmployee.username.toLowerCase()
+        )
+        
+        if (usernameExists) {
+          setAddError('Username already exists. Please choose a different username.')
+          setAddingEmployee(false)
+          return
+        }
+
+        const employeeIdExists = Object.values(users).some(
+          user => user.employeeId === newEmployee.employeeId
+        )
+        
+        if (employeeIdExists) {
+          setAddError('Employee ID already exists. Please use a different ID.')
+          setAddingEmployee(false)
+          return
+        }
+      }
+
+      // Create new user in Realtime Database
+      console.log('Creating new user in Realtime Database...')
+      const newUserRef = push(usersRef)
+      await set(newUserRef, {
+        name: newEmployee.name,
+        username: newEmployee.username.toLowerCase(),
+        employeeId: newEmployee.employeeId,
+        email: newEmployee.email,
+        password: newEmployee.password,
+        isAdmin: newEmployee.isAdmin,
+        createdAt: new Date().toISOString()
+      })
+
+      console.log('Employee added successfully!')
+      setAddSuccess(`✅ Employee "${newEmployee.name}" added successfully!`)
+      
+      // Reset form
+      setNewEmployee({
+        name: '',
+        username: '',
+        employeeId: '',
+        email: '',
+        password: '',
+        isAdmin: false
+      })
+      
+      // Refresh data and close modal after 2 seconds
+      setTimeout(() => {
+        console.log('Refreshing data and closing modal...')
+        refreshData()
+        setShowAddEmployee(false)
+        setAddSuccess('')
+      }, 2000)
+
+    } catch (error) {
+      console.error('Error adding employee:', error)
+      console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
+      
+      let errorMessage = 'Failed to add employee. '
+      
+      if (error.code === 'PERMISSION_DENIED') {
+        errorMessage += 'Permission denied. Make sure you are logged in as admin and database rules allow writes.'
+      } else if (error.message) {
+        errorMessage += error.message
+      } else {
+        errorMessage += 'Please check console for details.'
+      }
+      
+      setAddError(errorMessage)
+    } finally {
+      setAddingEmployee(false)
+    }
+  }
+
   if (globalLoading && !dataLoaded) {
     return (
       <div className="admin-panel-page">
@@ -145,6 +257,13 @@ function AdminPanel() {
         <div className="admin-header">
           <h1>Admin Panel</h1>
           <p>Manage and view all employee attendance records</p>
+          <button 
+            onClick={() => setShowAddEmployee(true)} 
+            className="btn btn-success"
+            style={{ marginTop: '10px' }}
+          >
+            ➕ Add New Employee
+          </button>
         </div>
 
         <div className="stats-grid">
@@ -269,6 +388,139 @@ function AdminPanel() {
             </div>
           )}
         </div>
+
+        {/* Add Employee Modal */}
+        {showAddEmployee && (
+          <div className="modal-overlay" onClick={() => setShowAddEmployee(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Add New Employee</h2>
+                <button 
+                  className="close-button" 
+                  onClick={() => setShowAddEmployee(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {addError && (
+                <div className="error-message" style={{ marginBottom: '15px' }}>
+                  {addError}
+                </div>
+              )}
+
+              {addSuccess && (
+                <div className="success-message" style={{ 
+                  marginBottom: '15px', 
+                  padding: '12px 15px', 
+                  backgroundColor: '#d4edda', 
+                  color: '#155724', 
+                  borderRadius: '6px',
+                  border: '1px solid #c3e6cb',
+                  fontWeight: '600',
+                  fontSize: '15px'
+                }}>
+                  {addSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleAddEmployee} className="add-employee-form">
+                <div className="form-group">
+                  <label>Full Name *</label>
+                  <input
+                    type="text"
+                    value={newEmployee.name}
+                    onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                    placeholder="Enter full name"
+                    required
+                    disabled={addingEmployee}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Username * (for login)</label>
+                  <input
+                    type="text"
+                    value={newEmployee.username}
+                    onChange={(e) => setNewEmployee({...newEmployee, username: e.target.value})}
+                    placeholder="Enter username (e.g., john.doe)"
+                    required
+                    disabled={addingEmployee}
+                    pattern="[a-zA-Z0-9._\-]+"
+                    title="Username can only contain letters, numbers, dots, underscores, and hyphens"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Employee ID *</label>
+                  <input
+                    type="text"
+                    value={newEmployee.employeeId}
+                    onChange={(e) => setNewEmployee({...newEmployee, employeeId: e.target.value})}
+                    placeholder="Enter employee ID (e.g., EMP001)"
+                    required
+                    disabled={addingEmployee}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Email *</label>
+                  <input
+                    type="email"
+                    value={newEmployee.email}
+                    onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                    placeholder="Enter email address"
+                    required
+                    disabled={addingEmployee}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Password *</label>
+                  <input
+                    type="password"
+                    value={newEmployee.password}
+                    onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
+                    placeholder="Enter password"
+                    required
+                    disabled={addingEmployee}
+                    minLength="6"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="checkbox"
+                      checked={newEmployee.isAdmin}
+                      onChange={(e) => setNewEmployee({...newEmployee, isAdmin: e.target.checked})}
+                      disabled={addingEmployee}
+                    />
+                    <span>Admin User (can access Admin Panel)</span>
+                  </label>
+                </div>
+
+                <div className="modal-actions">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAddEmployee(false)}
+                    className="btn btn-secondary"
+                    disabled={addingEmployee}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={addingEmployee}
+                  >
+                    {addingEmployee ? 'Adding...' : 'Add Employee'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
